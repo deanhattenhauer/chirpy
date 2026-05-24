@@ -1,7 +1,7 @@
-// Goal: Build and run a server that binds on port 8080 and always responds with 404 Not Found.
 package main
 
 import (
+	"io"
 	"log"
 	"net/http"
 )
@@ -15,9 +15,21 @@ func main() {
     // Without registered routes, all requests return 404 by default.
 	mux := http.NewServeMux()
 
-	// FileServer serves static assets from the current directory.
-    // The root path "/" catches all unmatched requests and serves files.
-	mux.Handle("/", http.FileServer(http.Dir(filepathRoot)))
+	// Static assets are served under /app/ to avoid conflicts with API routes.
+	// StripPrefix removes /app from the request path before the fileserver sees it,
+	// so the fileserver resolves paths relative to the project root as expected.
+	mux.Handle("/app/", http.StripPrefix("/app/", http.FileServer(http.Dir(filepathRoot))))
+
+	// Readiness endpoint — used by external systems to verify the server is alive.
+	// Returns 200 OK with a plain text body to confirm the server is accepting traffic.
+	// Can be extended to return 503 if dependencies like the database are unavailable.
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, req *http.Request) {
+
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8") // normal header
+		w.WriteHeader(http.StatusOK)
+
+		io.WriteString(w, "OK")
+	})
 
 	// Server is configured to listen on all network interfaces on port 8080.
     // The mux handles routing decisions for all incoming requests.
