@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -32,16 +31,17 @@ func main() {
 	// StripPrefix removes /app from the request path before the fileserver sees it,
 	// so the fileserver resolves paths relative to the project root as expected.
 	// Wrapped with middleware to count each fileserver request.
-	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
+	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+	mux.Handle("/app/", fsHandler)
 
 	// Readiness endpoint registered as a named function to keep main focused
 	// on wiring and allow the handler to grow independently.
-	mux.HandleFunc("/healthz", handlerReadiness)
+	mux.HandleFunc("GET /healthz", handlerReadiness)
 
 	// Metrics and reset endpoints are methods on apiConfig to access shared state.
 	// Only handlers that need state are bound to the config struct.
-	mux.HandleFunc("/metrics", apiCfg.handlerMetrics)
-	mux.HandleFunc("/reset", apiCfg.handlerReset)
+	mux.HandleFunc("GET /metrics", apiCfg.handlerMetrics)
+	mux.HandleFunc("POST /reset", apiCfg.handlerReset)
 
 	// Server is configured to listen on all network interfaces on port 8080.
     // The mux handles routing decisions for all incoming requests.
@@ -60,22 +60,4 @@ func main() {
 		// Error starting or closing listener:
 		log.Fatalf("HTTP server ListenAndServe: %v", err)
 	}
-}
-
-// handlerMetrics reports the number of fileserver requests since last reset.
-// Exposes internal server telemetry for monitoring and product analytics.
-func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("Hits: %d", cfg.fileserverHits.Load())))
-}
-
-// middlewareMetricsInc wraps a handler to increment the request counter on each call.
-// Middleware pattern allows cross-cutting concerns like metrics to be applied
-// without modifying the underlying handler logic.
-func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cfg.fileserverHits.Add(1)
-		next.ServeHTTP(w, r)
-	})
 }
