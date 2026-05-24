@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"log"
 	"net/http"
 )
@@ -18,18 +17,11 @@ func main() {
 	// Static assets are served under /app/ to avoid conflicts with API routes.
 	// StripPrefix removes /app from the request path before the fileserver sees it,
 	// so the fileserver resolves paths relative to the project root as expected.
-	mux.Handle("/app/", http.StripPrefix("/app/", http.FileServer(http.Dir(filepathRoot))))
+	mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
 
-	// Readiness endpoint — used by external systems to verify the server is alive.
-	// Returns 200 OK with a plain text body to confirm the server is accepting traffic.
-	// Can be extended to return 503 if dependencies like the database are unavailable.
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, req *http.Request) {
-
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8") // normal header
-		w.WriteHeader(http.StatusOK)
-
-		io.WriteString(w, "OK")
-	})
+	// Readiness endpoint registered as a named function to keep main focused
+	// on wiring and allow the handler to grow independently.
+	mux.HandleFunc("/healthz", handlerReadiness)
 
 	// Server is configured to listen on all network interfaces on port 8080.
     // The mux handles routing decisions for all incoming requests.
@@ -48,4 +40,13 @@ func main() {
 		// Error starting or closing listener:
 		log.Fatalf("HTTP server ListenAndServe: %v", err)
 	}
+}
+
+// handlerReadiness is the health check endpoint for external systems.
+// Returns 200 OK to confirm the server is alive and accepting traffic.
+// Can be extended to check dependencies like the database before responding.
+func handlerReadiness(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(http.StatusText(http.StatusOK)))
 }
