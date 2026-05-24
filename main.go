@@ -62,15 +62,6 @@ func main() {
 	}
 }
 
-// handlerReadiness is the health check endpoint for external systems.
-// Returns 200 OK to confirm the server is alive and accepting traffic.
-// Can be extended to check dependencies like the database before responding.
-func handlerReadiness(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(http.StatusText(http.StatusOK)))
-}
-
 // handlerMetrics reports the number of fileserver requests since last reset.
 // Exposes internal server telemetry for monitoring and product analytics.
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
