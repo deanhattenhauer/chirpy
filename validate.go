@@ -2,13 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 )
 
-// handlerValidateChirp validates incoming chirp content against Chirpy's rules.
-// Chirps must be 140 characters or fewer — the same limit as early Twitter.
-func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
+// handlerChirpsValidate validates incoming chirp content against Chirpy's character limit.
+// Chirps must be 140 characters or fewer — returns 400 if exceeded, 200 if valid.
+func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 	
 	// parameters maps the incoming JSON request body to a Go struct.
 	// Struct tags ensure the JSON key "body" maps to the Body field.
@@ -16,56 +15,31 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 		Body string `json:"body"`
 	}
 
-	// errorVals is the shape of all error responses from this endpoint.
-	type errorVals struct {
-    	Error string `json:"error"`
-	}
-
 	// returnVals is the shape of a successful validation response.
 	type returnVals struct {
-        Valid bool `json:"valid"`
-    }
+		Valid bool `json:"valid"`
+	}
 
-	// Decode the request body — returns an error if JSON is malformed or wrong types.
+	// Decode the request body — invalid JSON or wrong types return a 500.
 	decoder := json.NewDecoder(r.Body)
-    params := parameters{}
-    err := decoder.Decode(&params)
-
-    if err != nil {
-		log.Printf("Error decoding parameters: %s", err)
-		w.WriteHeader(500)
-		return
-    }
-
-	// Enforce Chirpy's 140 character limit before processing further.
-	// Returns 400 Bad Request with a descriptive error message.
-	if len(params.Body) > 140 {
-		errBody := errorVals{Error: "Chirp is too long"}
-		dat, err := json.Marshal(errBody)
-		if err != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(500)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(400)
-		w.Write(dat)
-		return
-	}
-
-	// Chirp is valid — respond with 200 and a confirmation payload.
-    respBody := returnVals{
-    Valid: true,
-	}
-
-    dat, err := json.Marshal(respBody)
+	params := parameters{}
+	err := decoder.Decode(&params)
 	if err != nil {
-			log.Printf("Error marshalling JSON: %s", err)
-			w.WriteHeader(500)
-			return
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	w.Write(dat)
+	// Named constant avoids magic numbers and makes the limit easy to change.
+	const maxChirpLength = 140
+
+	// Enforce the character limit before processing further.
+	if len(params.Body) > maxChirpLength {
+		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
+		return
+	}
+
+	// Chirp is valid — respond with confirmation payload.
+	respondWithJSON(w, http.StatusOK, returnVals{
+		Valid: true,
+	})
 }
