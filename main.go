@@ -37,6 +37,7 @@ func main() {
 	// Readiness endpoint registered as a named function to keep main focused
 	// on wiring and allow the handler to grow independently.
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
+	mux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 
 	// Metrics and reset endpoints are methods on apiConfig to access shared state.
 	// Only handlers that need state are bound to the config struct.
