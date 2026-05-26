@@ -40,8 +40,8 @@ func main() {
 
 	// Metrics and reset endpoints are methods on apiConfig to access shared state.
 	// Only handlers that need state are bound to the config struct.
-	mux.HandleFunc("GET /api/metrics", apiCfg.handlerMetrics)
-	mux.HandleFunc("POST /api/reset", apiCfg.handlerReset)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
+	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 
 	// Server is configured to listen on all network interfaces on port 8080.
     // The mux handles routing decisions for all incoming requests.
