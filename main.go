@@ -36,12 +36,12 @@ func main() {
 
 	// Readiness endpoint registered as a named function to keep main focused
 	// on wiring and allow the handler to grow independently.
-	mux.HandleFunc("GET /healthz", handlerReadiness)
+	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 
 	// Metrics and reset endpoints are methods on apiConfig to access shared state.
 	// Only handlers that need state are bound to the config struct.
-	mux.HandleFunc("GET /metrics", apiCfg.handlerMetrics)
-	mux.HandleFunc("POST /reset", apiCfg.handlerReset)
+	mux.HandleFunc("GET /api/metrics", apiCfg.handlerMetrics)
+	mux.HandleFunc("POST /api/reset", apiCfg.handlerReset)
 
 	// Server is configured to listen on all network interfaces on port 8080.
     // The mux handles routing decisions for all incoming requests.
