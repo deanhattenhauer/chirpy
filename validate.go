@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 // handlerChirpsValidate validates incoming chirp content against Chirpy's character limit.
@@ -17,8 +18,8 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 
 	// returnVals is the shape of a successful validation response.
 	type returnVals struct {
-		Valid bool `json:"valid"`
-	}
+    	CleanedBody string `json:"cleaned_body"`
+	}	
 
 	// Decode the request body — invalid JSON or wrong types return a 500.
 	decoder := json.NewDecoder(r.Body)
@@ -31,15 +32,40 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 
 	// Named constant avoids magic numbers and makes the limit easy to change.
 	const maxChirpLength = 140
-
+	
 	// Enforce the character limit before processing further.
 	if len(params.Body) > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
 		return
 	}
 
-	// Chirp is valid — respond with confirmation payload.
+	// Map lookup is O(1) — more efficient than slice search for word filtering.
+	// Passed to getCleanedBody so the bad word list can vary per call if needed.
+		badWords := map[string]struct{}{
+		"kerfuffle": {},
+		"sharbert":  {},
+		"fornax":    {},
+	}
+	cleaned := getCleanedBody(params.Body, badWords)
+
 	respondWithJSON(w, http.StatusOK, returnVals{
-		Valid: true,
+		CleanedBody: cleaned,
 	})
+}
+
+// getCleanedBody replaces profane words with asterisks while preserving case
+// of surrounding words. Comparison is case-insensitive but punctuation is respected —
+// "sharbert!" is not considered a match.
+func getCleanedBody(body string, badWords map[string]struct{}) string {
+	words := strings.Split(body, " ")
+
+	// Modify words in place by index — more memory efficient than building a new slice.
+	for i, word := range words {
+		loweredWord := strings.ToLower(word)
+		if _, ok := badWords[loweredWord]; ok {
+			words[i] = "****"
+		}
+	}
+	cleaned := strings.Join(words, " ")
+	return cleaned
 }
