@@ -41,7 +41,7 @@ func handlerChirpsValidate(w http.ResponseWriter, r *http.Request) {
 
 	// Map lookup is O(1) — more efficient than slice search for word filtering.
 	// Passed to getCleanedBody so the bad word list can vary per call if needed.
-		badWords := map[string]struct{}{
+	badWords := map[string]struct{}{
 		"kerfuffle": {},
 		"sharbert":  {},
 		"fornax":    {},

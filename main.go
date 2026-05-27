@@ -1,9 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/deanhattenhauer/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 // apiConfig holds shared server state accessible across all request handlers.
@@ -12,16 +18,29 @@ type apiConfig struct {
 	// atomic.Int32 ensures safe concurrent access across multiple goroutines.
 	// Each incoming HTTP request runs in its own goroutine, so a regular int would race.
 	fileserverHits atomic.Int32
+	dbQueries *database.Queries
+
 }
 
 func main() {
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbQueries := database.New(db)
+
 	// Centralizing configuration avoids magic strings scattered through the codebase.
 	const filepathRoot = "."
 	const port = "8080"
 	
 	// apiCfg is the single source of truth for shared server state.
 	// Passed to handlers as a pointer receiver so all handlers share the same instance.
-	apiCfg := apiConfig{}
+	apiCfg := apiConfig{
+    	dbQueries: dbQueries,
+	}
 	
 	// ServeMux routes incoming requests to the appropriate handler.
     // Without registered routes, all requests return 404 by default.
