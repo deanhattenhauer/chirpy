@@ -68,7 +68,7 @@ func main() {
 	// Readiness endpoint registered as a named function to keep main focused
 	// on wiring and allow the handler to grow independently.
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
-	mux.HandleFunc("POST /api/validate_chirp", handlerChirpsValidate)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 
 	// Admin endpoints are restricted by platform — dangerous in production.
