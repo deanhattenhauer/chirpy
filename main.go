@@ -69,6 +69,7 @@ func main() {
 	// on wiring and allow the handler to grow independently.
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
+	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 
 	// Admin endpoints are restricted by platform — dangerous in production.

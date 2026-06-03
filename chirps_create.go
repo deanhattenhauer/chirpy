@@ -53,7 +53,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 	// This decouples the JSON response shape from the internal database model.
 	chirp, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Body: cleaned, UserID: params.UserID})
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't create user", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)
 		return
 	}
 
