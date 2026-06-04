@@ -1,7 +1,11 @@
 package auth
 
 import (
+	"time"
+
 	"github.com/alexedwards/argon2id"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func HashPassword(password string) (string, error) {
@@ -29,4 +33,43 @@ func CheckPasswordHash(password, hash string) (bool, error) {
 	}
 
 	return match, nil
+}
+
+func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
+	
+	// Create new claims and set fields
+	claims := jwt.RegisteredClaims{
+		
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		Issuer:    "chirpy-access",
+		Subject:   userID.String(),
+		}
+	
+	// Create new token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	
+	// Convert tokenSecret to a byte to be passed to SignedString
+	secret := []byte(tokenSecret)
+
+	// Sign token with the secret key
+	return token.SignedString(secret)
+}
+
+func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
+
+	// Valide the JWT signature & extract the claims into *jwt.Token struct
+	token, err := jwt.ParseWithClaims(tokenString,  &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
+
+		//return the key so the library can verify the signature
+		return []byte(tokenSecret), nil
+	})
+	if err != nil {
+		return uuid.UUID{}, err
+	} 
+	if claims, ok := token.Claims.(*jwt.RegisteredClaims); ok {
+		userID, err := uuid.Parse(claims.Subject)
+			return userID, err
 	}
+	return uuid.UUID{}, nil
+}
