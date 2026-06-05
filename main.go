@@ -23,6 +23,8 @@ type apiConfig struct {
 	dbQueries *database.Queries
 	// platform controls environment-specific behavior like the admin reset endpoint.
 	platform string
+	//jwt secret for token creation
+	jwtSecret string
 }
 
 func main() {
@@ -42,6 +44,7 @@ func main() {
 	// Platform controls environment-specific behavior.
 	// Set to "dev" locally to enable dangerous endpoints like /admin/reset.
 	platform := os.Getenv("PLATFORM")
+	jwtSecret := os.Getenv("JWT_SECRET")
 
 	// Centralizing configuration avoids magic strings scattered through the codebase.
 	const filepathRoot = "."
@@ -52,6 +55,7 @@ func main() {
 	apiCfg := apiConfig{
 		dbQueries: dbQueries,
 		platform:  platform,
+		jwtSecret: jwtSecret,
 	}
 
 	// ServeMux routes incoming requests to the appropriate handler.

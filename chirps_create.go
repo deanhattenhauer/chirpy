@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deanhattenhauer/chirpy/internal/auth"
 	"github.com/deanhattenhauer/chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -30,13 +31,25 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 	// parameters defines the expected shape of the request body.
 	type parameters struct {
 		Body string `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+	}
+
+	// Get jwt token
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't get header", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate token", err)
+		return
 	}
 
 	// Decode the request body — returns 500 if JSON is malformed or wrong types.
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
@@ -51,7 +64,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 
 	// Persist the chirp to the database.
 	// This decouples the JSON response shape from the internal database model.
-	chirp, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Body: cleaned, UserID: params.UserID})
+	chirp, err := cfg.dbQueries.CreateChirp(r.Context(), database.CreateChirpParams{ID: uuid.New(), CreatedAt: time.Now(), UpdatedAt: time.Now(), Body: cleaned, UserID: userID})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp", err)
 		return

@@ -1,12 +1,17 @@
 package auth
 
 import (
+	"errors"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
+
+var ErrNoAuthHeaderIncluded = errors.New("no auth header included in request")
 
 func HashPassword(password string) (string, error) {
 	
@@ -72,4 +77,22 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 			return userID, err
 	}
 	return uuid.UUID{}, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	// Get Authorization header
+	authHeader := headers.Get("Authorization")
+
+	// Error handling for no headers
+	if authHeader == "" {
+		return "", ErrNoAuthHeaderIncluded
+	}
+
+	// Trim the authHeader of bearer prefix
+	splitAuth := strings.Split(authHeader, " ")
+	if len(splitAuth) < 2 || splitAuth[0] != "Bearer" {
+		return "", errors.New("malformed authorization header")
+	}
+
+	return splitAuth[1], nil
 }
