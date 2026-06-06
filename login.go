@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/deanhattenhauer/chirpy/internal/auth"
+	"github.com/deanhattenhauer/chirpy/internal/database"
 )
 
 func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
@@ -14,13 +15,13 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		Password string `json:"password"`
 		Email string `json:"email"`
-		ExpiresInSeconds int `json:"expires_in_seconds"`
 	}
 
 	// response defines expected shape of the returned response body
 	type response struct {
     	User
     	Token string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	// Decode the request body — returns 500 if JSON is malformed or wrong types.
@@ -30,12 +31,6 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
-	}
-
-	// Expiration logic - not specified = 1 hour, > 1 hour = 1 hour, otherwise whatever client says
-	expirationTime := time.Hour
-	if params.ExpiresInSeconds > 0 && params.ExpiresInSeconds < 3600 {
-		expirationTime = time.Duration(params.ExpiresInSeconds) * time.Second
 	}
 
 	// Look up the user by email first to get their stored hash
@@ -53,9 +48,17 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create JWT token and catch error
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expirationTime)
+	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Unable to make JWT", err)
+		return
+	}
+
+	// Create refreshToken for response
+	refreshToken := auth.MakeRefreshToken()
+	_ , err = cfg.dbQueries.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{Token: refreshToken, CreatedAt: time.Now(), UpdatedAt: time.Now(), UserID: user.ID, ExpiresAt:  time.Now().Add(60 * 24 * time.Hour)})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Unable to create refresh token", err)
 		return
 	}
 
@@ -69,5 +72,6 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, r *http.Request) {
 		Email:     user.Email,
 		},
 		Token: token,
+		RefreshToken: refreshToken,
 		})
 }
