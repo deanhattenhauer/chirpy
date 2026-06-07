@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/deanhattenhauer/chirpy/internal/auth"
 	"github.com/google/uuid"
 )
 
@@ -19,10 +20,22 @@ func (cfg *apiConfig) handlerUpgradeUserToRed(w http.ResponseWriter, r *http.Req
     	} `json:"data"`
 	}
 
+	// Call GetAPIKey and compare it against cfg.polkaKey
+	polkaKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't get api key", err)
+		return
+	}
+	if polkaKey != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "Invalid api key", err)
+		return
+	}
+	
+
 	// Decode the request body — returns 500 if JSON is malformed or wrong types.
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
@@ -45,6 +58,4 @@ func (cfg *apiConfig) handlerUpgradeUserToRed(w http.ResponseWriter, r *http.Req
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-
-
 }
