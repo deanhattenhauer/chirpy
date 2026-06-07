@@ -90,6 +90,9 @@ func main() {
 	// Login endpoints
 	mux.HandleFunc("POST /api/login" ,apiCfg.handlerUserLogin)
 
+	// Webhook endpoints
+	mux.HandleFunc("POST /api/polka/webhooks" ,apiCfg.handlerUpgradeUserToRed)
+
 	// Admin endpoints are restricted by platform — dangerous in production.
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
