@@ -4,20 +4,37 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/deanhattenhauer/chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 //handlerGetAllChirps returns an array of all Chirps from the database
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
 
-	//Retrieves chirps from the database
-	chirps, err := cfg.dbQueries.GetAllChirps(r.Context())
+	// Check for optional author_id
+	authorID := r.URL.Query().Get("author_id")
+
+	var chirps []database.Chirp
+	var err error
+	
+	// If authorID is not empty, parse it as UUID and call GetAllChirpsSingleUser
+	// If authorID is empty, call GetAllChirps
+	if authorID != "" {
+		parsedID, parseErr := uuid.Parse(authorID)
+		if parseErr != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid author ID", parseErr)
+			return
+		}
+		chirps, err = cfg.dbQueries.GetAllChirpsSingleUser(r.Context(), parsedID)
+	} else {
+    	chirps, err = cfg.dbQueries.GetAllChirps(r.Context())
+	}
+
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't get chirps", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't not get author id", err)
 		return
 	}
 
-	
 	newSlice := []Chirp{}
 	
 	//Map database.Chirp to API Chirp struct to ensure correct JSON key casing via struct tags.
@@ -30,7 +47,7 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 		UserID: chirp.UserID,
 		})
 	}
-	
+
 	respondWithJSON(w, http.StatusOK, newSlice)
 }
 
