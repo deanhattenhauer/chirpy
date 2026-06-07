@@ -84,6 +84,7 @@ func main() {
 
 	// User endpoints
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	mux.HandleFunc("PUT /api/users", apiCfg.handlerUpdateUser)
 	
 	// Login endpoints
 	mux.HandleFunc("POST /api/login" ,apiCfg.handlerUserLogin)
