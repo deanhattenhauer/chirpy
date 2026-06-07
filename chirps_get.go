@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"sort"
 
 	"github.com/deanhattenhauer/chirpy/internal/database"
 	"github.com/google/uuid"
@@ -13,6 +14,7 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 
 	// Check for optional author_id
 	authorID := r.URL.Query().Get("author_id")
+	sortOrder := r.URL.Query().Get("sort")
 
 	var chirps []database.Chirp
 	var err error
@@ -36,7 +38,7 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 	}
 
 	newSlice := []Chirp{}
-	
+
 	//Map database.Chirp to API Chirp struct to ensure correct JSON key casing via struct tags.
 	for _, chirp := range chirps {
 		newSlice = append(newSlice, Chirp{
@@ -47,6 +49,13 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 		UserID: chirp.UserID,
 		})
 	}
+
+	sort.Slice(newSlice, func(i, j int) bool {
+    if sortOrder == "desc" {
+        return newSlice[i].CreatedAt.After(newSlice[j].CreatedAt)
+    }
+    return newSlice[i].CreatedAt.Before(newSlice[j].CreatedAt)
+	})
 
 	respondWithJSON(w, http.StatusOK, newSlice)
 }
